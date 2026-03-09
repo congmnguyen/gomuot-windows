@@ -3,9 +3,12 @@ using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
-using System.Windows.Media;
 
 using DrawingColor = System.Drawing.Color;
+using DrawingFontStyle = System.Drawing.FontStyle;
+using DrawingLinearGradientBrush = System.Drawing.Drawing2D.LinearGradientBrush;
+using WpfBitmapSizeOptions = System.Windows.Interop.BitmapSizeOptions;
+using WpfImageSource = System.Windows.Media.ImageSource;
 
 namespace GoMuot.Core;
 
@@ -42,7 +45,7 @@ public static class IconHelper
 
             if (isEnabled)
             {
-                using var brush = new LinearGradientBrush(rect, AccentTop, AccentBottom, LinearGradientMode.Vertical);
+                using var brush = new DrawingLinearGradientBrush(rect, AccentTop, AccentBottom, LinearGradientMode.Vertical);
                 g.FillPath(brush, path);
             }
             else
@@ -51,7 +54,7 @@ public static class IconHelper
                 g.FillPath(brush, path);
             }
 
-            using var font = new Font("Segoe UI", 9, FontStyle.Bold);
+            using var font = new Font("Segoe UI", 9, DrawingFontStyle.Bold);
             using var textBrush = new SolidBrush(DrawingColor.White);
             var textSize = g.MeasureString(text, font);
             g.DrawString(text, font, textBrush, (size - textSize.Width) / 2, (size - textSize.Height) / 2);
@@ -72,7 +75,7 @@ public static class IconHelper
     /// <summary>
     /// Creates a WPF window icon for title bars and taskbar previews.
     /// </summary>
-    public static ImageSource CreateWindowIcon(int size = 32)
+    public static WpfImageSource CreateWindowIcon(int size = 32)
     {
         using var bitmap = new Bitmap(size, size);
         using (var g = Graphics.FromImage(bitmap))
@@ -83,11 +86,11 @@ public static class IconHelper
 
             var rect = new Rectangle(0, 0, size - 1, size - 1);
             using var path = RoundedRect(rect, Math.Max(4, size / 5));
-            using var brush = new LinearGradientBrush(rect, AccentTop, AccentBottom, LinearGradientMode.Vertical);
+            using var brush = new DrawingLinearGradientBrush(rect, AccentTop, AccentBottom, LinearGradientMode.Vertical);
             g.FillPath(brush, path);
 
             float fontSize = size * 0.52f;
-            using var font = new Font("Segoe UI", fontSize, FontStyle.Bold, GraphicsUnit.Pixel);
+            using var font = new Font("Segoe UI", fontSize, DrawingFontStyle.Bold, GraphicsUnit.Pixel);
             using var textBrush = new SolidBrush(DrawingColor.White);
             var textSize = g.MeasureString("G", font);
             g.DrawString("G", font, textBrush, (size - textSize.Width) / 2, (size - textSize.Height) / 2);
@@ -100,7 +103,7 @@ public static class IconHelper
                 hBitmap,
                 IntPtr.Zero,
                 Int32Rect.Empty,
-                BitmapSizeOptions.FromEmptyOptions());
+                WpfBitmapSizeOptions.FromEmptyOptions());
 
             source.Freeze();
             return source;
