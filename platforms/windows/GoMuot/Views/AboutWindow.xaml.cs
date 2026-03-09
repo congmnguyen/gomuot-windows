@@ -14,6 +14,7 @@ public partial class AboutWindow : Window
     public AboutWindow()
     {
         InitializeComponent();
+        Icon = IconHelper.CreateWindowIcon(32);
         LoadMetadata();
     }
 

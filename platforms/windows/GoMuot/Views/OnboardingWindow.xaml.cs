@@ -16,6 +16,7 @@ public partial class OnboardingWindow : Window
     public OnboardingWindow(SettingsService settings)
     {
         InitializeComponent();
+        Icon = GoMuot.Core.IconHelper.CreateWindowIcon(32);
         _settings = settings;
         _dots = new[] { Dot1, Dot2, Dot3 };
         UpdateDots();

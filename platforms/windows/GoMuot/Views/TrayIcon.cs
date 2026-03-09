@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using GoMuot.Core;
 
@@ -122,7 +121,7 @@ public class TrayIcon : IDisposable
 
         try
         {
-            _notifyIcon.Icon = CreateStatusIcon(isEnabled ? "g" : "-", isEnabled);
+            _notifyIcon.Icon = IconHelper.CreateTrayIcon(isEnabled ? "V" : "E", isEnabled);
         }
         catch
         {
@@ -137,46 +136,6 @@ public class TrayIcon : IDisposable
         string status = isEnabled ? "Bật" : "Tắt";
         string methodName = InputMethodInfo.GetName(InputMethod.Telex);
         _notifyIcon.Text = $"{AppMetadata.Name} [{methodName}] - {status}";
-    }
-
-    /// <summary>
-    /// Create a minimal monochrome tray icon.
-    /// </summary>
-    private static Icon CreateStatusIcon(string text, bool isEnabled)
-    {
-        const int size = 16;
-        using var bitmap = new Bitmap(size, size);
-
-        using (var g = Graphics.FromImage(bitmap))
-        {
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-            g.Clear(Color.Transparent);
-
-            var rect = new Rectangle(0, 0, size - 1, size - 1);
-            using var bgBrush = new SolidBrush(Color.FromArgb(247, 247, 241));
-            using var borderPen = new Pen(Color.FromArgb(48, 48, 48));
-            g.FillRectangle(bgBrush, rect);
-            g.DrawRectangle(borderPen, rect);
-
-            var textColor = isEnabled
-                ? Color.FromArgb(20, 20, 20)
-                : Color.FromArgb(128, 128, 128);
-
-            using var font = new Font("Consolas", 9, FontStyle.Bold);
-            using var brush = new SolidBrush(textColor);
-
-            var textSize = g.MeasureString(text, font);
-            float x = (size - textSize.Width) / 2;
-            float y = (size - textSize.Height) / 2;
-
-            g.DrawString(text, font, brush, x, y);
-        }
-
-        // Clone icon to own it, then dispose temp resources
-        var hIcon = bitmap.GetHicon();
-        using var tempIcon = Icon.FromHandle(hIcon);
-        return (Icon)tempIcon.Clone();
     }
 
     private void ShowAbout()
