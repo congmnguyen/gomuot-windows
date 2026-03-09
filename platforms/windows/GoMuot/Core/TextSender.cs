@@ -1,4 +1,6 @@
 using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
 
 namespace GoMuot.Core;
 
@@ -8,6 +10,8 @@ namespace GoMuot.Core;
 /// </summary>
 public static class TextSender
 {
+    private readonly record struct DispatchProfile(bool Sequential, int RetryCount, int KeyDelayMs, int PhaseDelayMs);
+
     #region Win32 Constants
 
     private const uint INPUT_KEYBOARD = 1;
@@ -91,108 +95,97 @@ public static class TextSender
             return;
         }
 
-        var inputs = new List<INPUT>();
         var marker = KeyboardHook.GetInjectedKeyMarker();
+        var profile = ResolveDispatchProfile();
 
-        // Add backspaces
+        var backspaceInputs = new List<INPUT>();
+        var textInputs = new List<INPUT>();
+        var trailingInputs = new List<INPUT>();
+
         for (int i = 0; i < backspaces; i++)
         {
-            // Key down
-            inputs.Add(new INPUT
-            {
-                type = INPUT_KEYBOARD,
-                u = new INPUTUNION
-                {
-                    ki = new KEYBDINPUT
-                    {
-                        wVk = KeyCodes.VK_BACK,
-                        wScan = 0,
-                        dwFlags = 0,
-                        time = 0,
-                        dwExtraInfo = marker
-                    }
-                }
-            });
-
-            // Key up
-            inputs.Add(new INPUT
-            {
-                type = INPUT_KEYBOARD,
-                u = new INPUTUNION
-                {
-                    ki = new KEYBDINPUT
-                    {
-                        wVk = KeyCodes.VK_BACK,
-                        wScan = 0,
-                        dwFlags = KEYEVENTF_KEYUP,
-                        time = 0,
-                        dwExtraInfo = marker
-                    }
-                }
-            });
+            AddVirtualKey(backspaceInputs, KeyCodes.VK_BACK, marker);
         }
 
-        AddUnicodeText(inputs, text, marker);
+        AddUnicodeText(textInputs, text, marker);
 
         if (!string.IsNullOrEmpty(trailingText))
         {
-            AddUnicodeText(inputs, trailingText, marker);
+            AddUnicodeText(trailingInputs, trailingText, marker);
         }
 
         if (trailingVirtualKey.HasValue)
         {
-            AddVirtualKey(inputs, trailingVirtualKey.Value, marker);
+            AddVirtualKey(trailingInputs, trailingVirtualKey.Value, marker);
         }
 
-        if (inputs.Count > 0)
+        DispatchInputGroup(backspaceInputs, profile);
+
+        if (backspaceInputs.Count > 0 && (textInputs.Count > 0 || trailingInputs.Count > 0) && profile.PhaseDelayMs > 0)
         {
-            var inputArray = inputs.ToArray();
-            int inputSize = Marshal.SizeOf<INPUT>();
-            uint sent = SendInput((uint)inputArray.Length, inputArray, inputSize);
-            if (sent != inputArray.Length)
-            {
-                int error = Marshal.GetLastWin32Error();
-                System.Diagnostics.Debug.WriteLine(
-                    $"SendInput partial failure sent={sent}/{inputArray.Length} error={error} inputSize={inputSize}");
-            }
+            Thread.Sleep(profile.PhaseDelayMs);
         }
+
+        DispatchInputGroup(textInputs, profile);
+
+        if (textInputs.Count > 0 && trailingInputs.Count > 0 && profile.PhaseDelayMs > 0)
+        {
+            Thread.Sleep(profile.PhaseDelayMs);
+        }
+
+        DispatchInputGroup(trailingInputs, profile);
     }
 
     private static void AddUnicodeText(List<INPUT> inputs, string text, IntPtr marker)
     {
-        foreach (char c in text)
+        foreach (Rune rune in text.EnumerateRunes())
         {
-            inputs.Add(new INPUT
+            if (rune.IsBmp)
             {
-                type = INPUT_KEYBOARD,
-                u = new INPUTUNION
-                {
-                    ki = new KEYBDINPUT
-                    {
-                        wVk = 0,
-                        wScan = c,
-                        dwFlags = KEYEVENTF_UNICODE,
-                        time = 0,
-                        dwExtraInfo = marker
-                    }
-                }
-            });
-            inputs.Add(new INPUT
+                AddUnicodeChar(inputs, (char)rune.Value, marker);
+                continue;
+            }
+
+            foreach (char surrogate in rune.ToString())
             {
-                type = INPUT_KEYBOARD,
-                u = new INPUTUNION
-                {
-                    ki = new KEYBDINPUT
-                    {
-                        wVk = 0,
-                        wScan = c,
-                        dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP,
-                        time = 0,
-                        dwExtraInfo = marker
-                    }
-                }
-            });
+                AddUnicodeChar(inputs, surrogate, marker);
+            }
         }
+    }
+
+    private static void AddUnicodeChar(List<INPUT> inputs, char c, IntPtr marker)
+    {
+        inputs.Add(new INPUT
+        {
+            type = INPUT_KEYBOARD,
+            u = new INPUTUNION
+            {
+                ki = new KEYBDINPUT
+                {
+                    wVk = 0,
+                    wScan = c,
+                    dwFlags = KEYEVENTF_UNICODE,
+                    time = 0,
+                    dwExtraInfo = marker
+                }
+            }
+        });
+
+        inputs.Add(new INPUT
+        {
+            type = INPUT_KEYBOARD,
+            u = new INPUTUNION
+            {
+                ki = new KEYBDINPUT
+                {
+                    wVk = 0,
+                    wScan = c,
+                    dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP,
+                    time = 0,
+                    dwExtraInfo = marker
+                }
+            }
+        });
     }
 
     private static void AddVirtualKey(List<INPUT> inputs, ushort virtualKey, IntPtr marker)
@@ -228,5 +221,104 @@ public static class TextSender
                 }
             }
         });
+    }
+
+    private static DispatchProfile ResolveDispatchProfile()
+    {
+        var foreground = ForegroundWindowInfo.Capture();
+
+        if (foreground.IsKnownTerminalHost)
+        {
+            return new DispatchProfile(
+                Sequential: true,
+                RetryCount: 5,
+                KeyDelayMs: 2,
+                PhaseDelayMs: 6);
+        }
+
+        if (foreground.IsKnownEditorHost && foreground.MentionsClaudeCode)
+        {
+            return new DispatchProfile(
+                Sequential: true,
+                RetryCount: 4,
+                KeyDelayMs: 2,
+                PhaseDelayMs: 4);
+        }
+
+        return new DispatchProfile(
+            Sequential: false,
+            RetryCount: 3,
+            KeyDelayMs: 0,
+            PhaseDelayMs: 0);
+    }
+
+    private static void DispatchInputGroup(List<INPUT> inputs, DispatchProfile profile)
+    {
+        if (inputs.Count == 0)
+        {
+            return;
+        }
+
+        if (!profile.Sequential)
+        {
+            SendAllWithRetry(inputs.ToArray(), profile.RetryCount);
+            return;
+        }
+
+        // Every action is emitted as a down/up pair. Sending those pairs one by
+        // one with a small delay is slower, but terminal-style apps are less
+        // likely to drop or reorder them than a large batched SendInput call.
+        for (int i = 0; i < inputs.Count; i += 2)
+        {
+            int packetSize = Math.Min(2, inputs.Count - i);
+            var packet = new INPUT[packetSize];
+            inputs.CopyTo(i, packet, 0, packetSize);
+            SendAllWithRetry(packet, profile.RetryCount);
+
+            if (profile.KeyDelayMs > 0 && i + packetSize < inputs.Count)
+            {
+                Thread.Sleep(profile.KeyDelayMs);
+            }
+        }
+    }
+
+    private static void SendAllWithRetry(INPUT[] inputs, int retryCount)
+    {
+        if (inputs.Length == 0)
+        {
+            return;
+        }
+
+        int inputSize = Marshal.SizeOf<INPUT>();
+        int offset = 0;
+        int attempt = 0;
+
+        while (offset < inputs.Length && attempt <= retryCount)
+        {
+            int remainingCount = inputs.Length - offset;
+            var remaining = new INPUT[remainingCount];
+            Array.Copy(inputs, offset, remaining, 0, remainingCount);
+
+            uint sent = SendInput((uint)remaining.Length, remaining, inputSize);
+            if (sent == remaining.Length)
+            {
+                return;
+            }
+
+            if (sent > 0)
+            {
+                offset += (int)sent;
+            }
+
+            int error = Marshal.GetLastWin32Error();
+            System.Diagnostics.Debug.WriteLine(
+                $"SendInput partial failure sent={sent}/{remaining.Length} error={error} attempt={attempt + 1}/{retryCount + 1}");
+
+            attempt++;
+            if (attempt <= retryCount)
+            {
+                Thread.Sleep(2);
+            }
+        }
     }
 }
