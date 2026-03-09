@@ -7,8 +7,8 @@ using System.Windows.Interop;
 using DrawingColor = System.Drawing.Color;
 using DrawingFontStyle = System.Drawing.FontStyle;
 using DrawingLinearGradientBrush = System.Drawing.Drawing2D.LinearGradientBrush;
-using WpfBitmapSizeOptions = System.Windows.Interop.BitmapSizeOptions;
 using WpfImageSource = System.Windows.Media.ImageSource;
+using WpfBitmapSizeOptions = System.Windows.Media.Imaging.BitmapSizeOptions;
 
 namespace GoMuot.Core;
 
