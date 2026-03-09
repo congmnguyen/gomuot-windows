@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using GoMuot.Core;
 
@@ -33,7 +32,7 @@ public class TrayIcon : IDisposable
         _isEnabled = isEnabled;
 
         _contextMenu = new ContextMenuStrip();
-        _contextMenu.Font = new Font("Segoe UI", 9F);
+        _contextMenu.Font = new Font("Consolas", 9F);
         _contextMenu.ShowCheckMargin = true;
         _contextMenu.ShowImageMargin = false;
 
@@ -122,9 +121,7 @@ public class TrayIcon : IDisposable
 
         try
         {
-            // Create icon matching macOS style:
-            // White rounded rect background with "V" or "E" text
-            _notifyIcon.Icon = CreateStatusIcon(isEnabled ? "V" : "E", isEnabled);
+            _notifyIcon.Icon = CreateStatusIcon(isEnabled ? "g" : "-", isEnabled);
         }
         catch
         {
@@ -142,8 +139,7 @@ public class TrayIcon : IDisposable
     }
 
     /// <summary>
-    /// Create status icon matching macOS style
-    /// White rounded rect background with colored text
+    /// Create a minimal monochrome tray icon.
     /// </summary>
     private static Icon CreateStatusIcon(string text, bool isEnabled)
     {
@@ -156,18 +152,17 @@ public class TrayIcon : IDisposable
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
             g.Clear(Color.Transparent);
 
-            // White rounded rect background (like macOS)
             var rect = new Rectangle(0, 0, size - 1, size - 1);
-            using var path = CreateRoundedRectPath(rect, 3);
-            using var bgBrush = new SolidBrush(Color.White);
-            g.FillPath(bgBrush, path);
+            using var bgBrush = new SolidBrush(Color.FromArgb(247, 247, 241));
+            using var borderPen = new Pen(Color.FromArgb(48, 48, 48));
+            g.FillRectangle(bgBrush, rect);
+            g.DrawRectangle(borderPen, rect);
 
-            // Text color based on state
             var textColor = isEnabled
-                ? Color.FromArgb(37, 99, 235)  // Blue when enabled
-                : Color.FromArgb(156, 163, 175); // Gray when disabled
+                ? Color.FromArgb(20, 20, 20)
+                : Color.FromArgb(128, 128, 128);
 
-            using var font = new Font("Segoe UI", 9, FontStyle.Bold);
+            using var font = new Font("Consolas", 9, FontStyle.Bold);
             using var brush = new SolidBrush(textColor);
 
             var textSize = g.MeasureString(text, font);
@@ -181,20 +176,6 @@ public class TrayIcon : IDisposable
         var hIcon = bitmap.GetHicon();
         using var tempIcon = Icon.FromHandle(hIcon);
         return (Icon)tempIcon.Clone();
-    }
-
-    private static GraphicsPath CreateRoundedRectPath(Rectangle rect, int radius)
-    {
-        var path = new GraphicsPath();
-        int d = radius * 2;
-
-        path.AddArc(rect.X, rect.Y, d, d, 180, 90);
-        path.AddArc(rect.Right - d, rect.Y, d, d, 270, 90);
-        path.AddArc(rect.Right - d, rect.Bottom - d, d, d, 0, 90);
-        path.AddArc(rect.X, rect.Bottom - d, d, d, 90, 90);
-        path.CloseFigure();
-
-        return path;
     }
 
     private void ShowAbout()

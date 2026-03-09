@@ -1,18 +1,24 @@
 <Window x:Class="GoMuot.Views.OnboardingWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Chào mừng đến GoMuot"
-        Height="500" Width="500"
+        Title="Gõ Mượt"
+        Height="540" Width="520"
         WindowStartupLocation="CenterScreen"
         ResizeMode="NoResize"
         Background="{StaticResource BackgroundBrush}">
 
-    <Grid>
+    <Grid Margin="18">
+        <Border BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="1"
+                Background="{StaticResource PanelBrush}"
+                CornerRadius="2"/>
+
         <!-- Page Container -->
         <TabControl x:Name="PageTabs"
                     BorderThickness="0"
                     Background="Transparent"
-                    Padding="0">
+                    Padding="0"
+                    Margin="0">
             <TabControl.ItemContainerStyle>
                 <Style TargetType="TabItem">
                     <Setter Property="Visibility" Value="Collapsed"/>
@@ -21,50 +27,80 @@
 
             <!-- Page 1: Welcome -->
             <TabItem>
-                <Grid Margin="40">
+                <Grid Margin="44">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <StackPanel Grid.Row="0" VerticalAlignment="Center">
-                        <TextBlock Text="GoMuot"
-                                   FontSize="36"
-                                   FontWeight="Bold"
-                                   Foreground="{StaticResource PrimaryBrush}"
+                        <Border Width="84"
+                                Height="84"
+                                HorizontalAlignment="Center"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1"
+                                Background="{StaticResource BackgroundBrush}">
+                            <Grid Margin="10">
+                                <TextBlock Text=">"
+                                           FontFamily="Consolas"
+                                           FontSize="24"
+                                           Foreground="{StaticResource TextBrush}"
+                                           HorizontalAlignment="Left"
+                                           VerticalAlignment="Top"/>
+                                <TextBlock Text="g_"
+                                           FontFamily="Consolas"
+                                           FontSize="20"
+                                           Foreground="{StaticResource TextBrush}"
+                                           HorizontalAlignment="Right"
+                                           VerticalAlignment="Bottom"/>
+                            </Grid>
+                        </Border>
+
+                        <TextBlock Text="gõ mượt"
+                                   FontSize="30"
+                                   FontFamily="Consolas"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextBrush}"
                                    HorizontalAlignment="Center"/>
-                        <TextBlock Text="Gõ Tiếng Việt Nhanh"
-                                   FontSize="16"
+                        <TextBlock Text="Simple Telex cho Windows"
+                                   FontSize="14"
+                                   FontFamily="Consolas"
                                    Foreground="{StaticResource SecondaryTextBrush}"
                                    HorizontalAlignment="Center"
-                                   Margin="0,8,0,0"/>
+                                   Margin="0,10,0,0"/>
 
-                        <TextBlock TextWrapping="Wrap"
-                                   TextAlignment="Center"
-                                   Margin="0,40,0,0"
-                                   FontSize="14"
-                                   Foreground="{StaticResource TextBrush}">
-                            <Run Text="Bộ gõ tiếng Việt hiện đại, nhẹ và nhanh."/>
-                            <LineBreak/>
-                            <LineBreak/>
-                            <Run Text="Cài đặt xong - Dùng ngay" FontWeight="SemiBold"/>
-                            <LineBreak/>
-                            <Run Text="Không quảng cáo - Không theo dõi - Miễn phí"/>
-                        </TextBlock>
+                        <Border Margin="0,28,0,0"
+                                Padding="16"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1"
+                                Background="{StaticResource BackgroundBrush}">
+                            <TextBlock TextWrapping="Wrap"
+                                       TextAlignment="Left"
+                                       FontFamily="Consolas"
+                                       FontSize="13"
+                                       LineHeight="20"
+                                       Foreground="{StaticResource TextBrush}">
+                                <Run Text="Một bộ gõ gọn, ít tuỳ chọn, vào việc ngay."/>
+                                <LineBreak/>
+                                <Run Text="Không đổi mode liên tục. Không menu rối."/>
+                                <LineBreak/>
+                                <Run Text="Bật lên, gõ `dd aw ow uw`, xong."/>
+                            </TextBlock>
+                        </Border>
                     </StackPanel>
 
                     <Button Grid.Row="1"
-                            Content="Bắt đầu"
+                            Content="[ bắt đầu ]"
                             Style="{StaticResource PrimaryButton}"
                             HorizontalAlignment="Center"
-                            Width="160"
+                            Width="180"
                             Click="NextPage_Click"/>
                 </Grid>
             </TabItem>
 
             <!-- Page 2: Simple Telex -->
             <TabItem>
-                <Grid Margin="40">
+                <Grid Margin="44">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
@@ -74,56 +110,63 @@
                     <StackPanel Grid.Row="0">
                         <TextBlock Text="Simple Telex"
                                    FontSize="24"
+                                   FontFamily="Consolas"
                                    FontWeight="SemiBold"
                                    Foreground="{StaticResource TextBrush}"/>
-                        <TextBlock Text="Bản Windows này dùng một kiểu gõ mặc định, gọn và dễ quen."
-                                   FontSize="14"
+                        <TextBlock Text="Một mode duy nhất. Không cần nghĩ nhiều."
+                                   FontSize="13"
+                                   FontFamily="Consolas"
                                    Foreground="{StaticResource SecondaryTextBrush}"
                                    Margin="0,8,0,0"/>
                     </StackPanel>
 
                     <StackPanel Grid.Row="1" VerticalAlignment="Center">
-                        <Border BorderBrush="#E5E7EB"
+                        <Border BorderBrush="{StaticResource BorderBrush}"
                                 BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="16">
+                                Padding="18"
+                                Background="{StaticResource BackgroundBrush}">
                             <StackPanel>
                                 <TextBlock Text="Simple Telex"
                                            FontWeight="SemiBold"
-                                           FontSize="15"/>
-                                <TextBlock Text="dd → đ   aw → ă   aa → â   ow → ơ   uw → ư"
+                                           FontSize="15"
+                                           FontFamily="Consolas"/>
+                                <TextBlock Text="dd -> đ   aw -> ă   aa -> â   ow -> ơ   uw -> ư"
                                            Foreground="{StaticResource SecondaryTextBrush}"
                                            Margin="0,4,0,0"
-                                           FontSize="13"/>
-                                <TextBlock Text="Khác với Telex thường, phím w đứng riêng sẽ giữ nguyên là w."
+                                           FontSize="13"
+                                           FontFamily="Consolas"/>
+                                <TextBlock Text="w đứng riêng sẽ giữ nguyên là w."
                                            Foreground="{StaticResource SecondaryTextBrush}"
                                            Margin="0,8,0,0"
                                            TextWrapping="Wrap"
-                                           FontSize="13"/>
+                                           FontSize="13"
+                                           FontFamily="Consolas"/>
                             </StackPanel>
                         </Border>
 
-                        <Border Background="#F3F4F6"
-                                CornerRadius="8"
-                                Padding="16"
+                        <Border Background="{StaticResource BackgroundBrush}"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1"
+                                Padding="18"
                                 Margin="0,12,0,0">
                             <TextBlock TextWrapping="Wrap"
                                        FontSize="13"
+                                       FontFamily="Consolas"
                                        Foreground="{StaticResource SecondaryTextBrush}">
-                                <Run Text="Mẹo: " FontWeight="SemiBold"/>
-                                <Run Text="Dùng Win + Space để bật hoặc tắt nhanh bộ gõ, giống thói quen đổi input trên Windows."/>
+                                <Run Text="Hotkey: " FontWeight="SemiBold"/>
+                                <Run Text="Win + Space để bật hoặc tắt bộ gõ."/>
                             </TextBlock>
                         </Border>
                     </StackPanel>
 
                     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center">
-                        <Button Content="Quay lại"
-                                Padding="16,8"
+                        <Button Content="[ quay lại ]"
+                                Style="{StaticResource SecondaryButton}"
                                 Margin="0,0,12,0"
                                 Click="PrevPage_Click"/>
-                        <Button Content="Tiếp theo"
+                        <Button Content="[ tiếp theo ]"
                                 Style="{StaticResource PrimaryButton}"
-                                Width="120"
+                                Width="150"
                                 Click="NextPage_Click"/>
                     </StackPanel>
                 </Grid>
@@ -131,53 +174,60 @@
 
             <!-- Page 3: Done -->
             <TabItem>
-                <Grid Margin="40">
+                <Grid Margin="44">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
                     <StackPanel Grid.Row="0" VerticalAlignment="Center">
-                        <TextBlock Text="Sẵn sàng!"
-                                   FontSize="32"
-                                   FontWeight="Bold"
-                                   Foreground="{StaticResource PrimaryBrush}"
+                        <TextBlock Text="ready"
+                                   FontSize="30"
+                                   FontFamily="Consolas"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextBrush}"
                                    HorizontalAlignment="Center"/>
 
-                        <TextBlock TextWrapping="Wrap"
-                                   TextAlignment="Center"
-                                   Margin="0,24,0,0"
-                                   FontSize="14"
-                                   Foreground="{StaticResource TextBrush}">
-                            <Run Text="GoMuot đang chạy trong khay hệ thống (system tray)."/>
-                            <LineBreak/>
-                            <LineBreak/>
-                            <Run Text="Nhấp chuột phải vào biểu tượng 'V' để:" FontWeight="SemiBold"/>
-                            <LineBreak/>
-                            <Run Text="• Bật/tắt bộ gõ"/>
-                            <LineBreak/>
-                            <Run Text="• Mở nhanh thông tin và liên kết góp ý"/>
-                        </TextBlock>
+                        <Border Margin="0,24,0,0"
+                                Padding="18"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1"
+                                Background="{StaticResource BackgroundBrush}">
+                            <TextBlock TextWrapping="Wrap"
+                                       TextAlignment="Left"
+                                       FontSize="13"
+                                       FontFamily="Consolas"
+                                       LineHeight="20"
+                                       Foreground="{StaticResource TextBrush}">
+                                <Run Text="GoMuot đang chạy trong system tray."/>
+                                <LineBreak/>
+                                <Run Text="right click: bật/tắt, about, feedback"/>
+                                <LineBreak/>
+                                <Run Text="double click hoặc Win + Space: toggle nhanh"/>
+                            </TextBlock>
+                        </Border>
 
-                        <Border Background="#F3F4F6"
-                                CornerRadius="8"
+                        <Border Background="{StaticResource BackgroundBrush}"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1"
                                 Padding="16"
                                 Margin="0,24,0,0">
                             <TextBlock TextWrapping="Wrap"
-                                       TextAlignment="Center"
+                                       TextAlignment="Left"
                                        FontSize="13"
+                                       FontFamily="Consolas"
                                        Foreground="{StaticResource SecondaryTextBrush}">
                                 <Run Text="Mẹo: " FontWeight="SemiBold"/>
-                                <Run Text="Nhấp đúp vào biểu tượng hoặc bấm Win + Space để nhanh chóng bật/tắt bộ gõ."/>
+                                <Run Text="nếu bạn quen đổi input bằng Windows, cứ giữ Win + Space."/>
                             </TextBlock>
                         </Border>
                     </StackPanel>
 
                     <Button Grid.Row="1"
-                            Content="Bắt đầu gõ tiếng Việt"
+                            Content="[ bắt đầu gõ tiếng Việt ]"
                             Style="{StaticResource PrimaryButton}"
                             HorizontalAlignment="Center"
-                            Width="200"
+                            Width="260"
                             Click="Finish_Click"/>
                 </Grid>
             </TabItem>
@@ -187,10 +237,10 @@
         <StackPanel Orientation="Horizontal"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Bottom"
-                    Margin="0,0,0,20">
-            <Ellipse x:Name="Dot1" Width="8" Height="8" Fill="{StaticResource PrimaryBrush}" Margin="4"/>
-            <Ellipse x:Name="Dot2" Width="8" Height="8" Fill="#E5E7EB" Margin="4"/>
-            <Ellipse x:Name="Dot3" Width="8" Height="8" Fill="#E5E7EB" Margin="4"/>
+                    Margin="0,0,0,18">
+            <Ellipse x:Name="Dot1" Width="7" Height="7" Fill="{StaticResource TextBrush}" Margin="4"/>
+            <Ellipse x:Name="Dot2" Width="7" Height="7" Fill="{StaticResource BorderBrush}" Margin="4"/>
+            <Ellipse x:Name="Dot3" Width="7" Height="7" Fill="{StaticResource BorderBrush}" Margin="4"/>
         </StackPanel>
     </Grid>
 </Window>
