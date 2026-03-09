@@ -52,7 +52,7 @@ public class TrayIcon : IDisposable
 
         // Toggle enabled
         var toggleItem = new ToolStripMenuItem("Bật/Tắt");
-        toggleItem.ShortcutKeyDisplayString = "Win+Space";
+        toggleItem.ShortcutKeyDisplayString = AppMetadata.ToggleHotkeyDisplay;
         toggleItem.Click += (s, e) => ToggleEnabled();
         _contextMenu.Items.Add(toggleItem);
 

@@ -12,9 +12,7 @@ public class KeyboardHook : IDisposable
 
     private const int WH_KEYBOARD_LL = 13;
     private const int WM_KEYDOWN = 0x0100;
-    private const int WM_KEYUP = 0x0101;
     private const int WM_SYSKEYDOWN = 0x0104;
-    private const int WM_SYSKEYUP = 0x0105;
     private const uint LLKHF_INJECTED = 0x10;
 
     #endregion
@@ -63,14 +61,6 @@ public class KeyboardHook : IDisposable
 
     // Flag to prevent recursive processing of injected keys
     private bool _isProcessing;
-
-    // Track the exact Win+Space toggle release sequence we need to swallow.
-    // This avoids opening Start/language UI on key release without keeping the
-    // Windows key in a "stuck" state for later keystrokes.
-    private bool _pendingWindowsToggleRelease;
-    private bool _suppressToggleSpaceKeyUp;
-    private bool _suppressToggleLeftWinKeyUp;
-    private bool _suppressToggleRightWinKeyUp;
 
     // Identifier for our injected keys (to skip processing them)
     private static readonly IntPtr InjectedKeyMarker = new IntPtr(0x474E4820); // "GNH " in hex
@@ -134,10 +124,7 @@ public class KeyboardHook : IDisposable
             return CallNextHookEx(_hookId, nCode, wParam, lParam);
         }
 
-        bool isKeyDown = wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN;
-        bool isKeyUp = wParam == (IntPtr)WM_KEYUP || wParam == (IntPtr)WM_SYSKEYUP;
-
-        if (nCode >= 0 && (isKeyDown || isKeyUp))
+        if (nCode >= 0 && (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN))
         {
             var hookStruct = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
 
@@ -155,11 +142,6 @@ public class KeyboardHook : IDisposable
 
             ushort keyCode = (ushort)hookStruct.vkCode;
 
-            if (TryHandlePendingWindowsToggleRelease(keyCode, isKeyDown, isKeyUp))
-            {
-                return (IntPtr)1;
-            }
-
             // Never run IME transformations while one of GoMuot's own windows
             // has focus. Otherwise injected replacements are sent back into the
             // app UI itself and can trigger buttons, links, or menu behavior.
@@ -176,17 +158,14 @@ public class KeyboardHook : IDisposable
             bool alt = IsAltDown();
             bool windows = IsWindowsDown();
 
-            if (keyCode == KeyCodes.VK_SPACE && windows && !ctrl && !alt && !shift)
+            // Windows owns Win+Space for input/language switching, so use a
+            // non-shell chord for GoMuot toggle to avoid stuck modifiers or
+            // accidental Start/input UI activation.
+            if (keyCode == KeyCodes.VK_SPACE && ctrl && shift && !alt && !windows)
             {
                 RustBridge.ClearAll();
-                BeginWindowsToggleSuppression();
                 ToggleRequested?.Invoke();
                 return (IntPtr)1;
-            }
-
-            if (!isKeyDown)
-            {
-                return CallNextHookEx(_hookId, nCode, wParam, lParam);
             }
 
             // Issue #150: Control key alone clears buffer (rhythm break like EVKey)
@@ -241,78 +220,6 @@ public class KeyboardHook : IDisposable
         }
 
         return CallNextHookEx(_hookId, nCode, wParam, lParam);
-    }
-
-    private bool TryHandlePendingWindowsToggleRelease(ushort keyCode, bool isKeyDown, bool isKeyUp)
-    {
-        if (!_pendingWindowsToggleRelease)
-        {
-            return false;
-        }
-
-        if (isKeyUp)
-        {
-            if (keyCode == KeyCodes.VK_SPACE && _suppressToggleSpaceKeyUp)
-            {
-                _suppressToggleSpaceKeyUp = false;
-                ResetWindowsToggleSuppressionIfComplete();
-                return true;
-            }
-
-            if (keyCode == KeyCodes.VK_LWIN && _suppressToggleLeftWinKeyUp)
-            {
-                _suppressToggleLeftWinKeyUp = false;
-                ResetWindowsToggleSuppressionIfComplete();
-                return true;
-            }
-
-            if (keyCode == KeyCodes.VK_RWIN && _suppressToggleRightWinKeyUp)
-            {
-                _suppressToggleRightWinKeyUp = false;
-                ResetWindowsToggleSuppressionIfComplete();
-                return true;
-            }
-        }
-
-        if (keyCode != KeyCodes.VK_SPACE &&
-            keyCode != KeyCodes.VK_LWIN &&
-            keyCode != KeyCodes.VK_RWIN &&
-            (isKeyDown || isKeyUp))
-        {
-            // User moved on to another shortcut/key sequence. Stop suppressing
-            // so we don't interfere with unrelated input.
-            ClearWindowsToggleSuppression();
-        }
-
-        return false;
-    }
-
-    private void BeginWindowsToggleSuppression()
-    {
-        _pendingWindowsToggleRelease = true;
-        _suppressToggleSpaceKeyUp = true;
-        _suppressToggleLeftWinKeyUp = IsKeyDown(KeyCodes.VK_LWIN);
-        _suppressToggleRightWinKeyUp = IsKeyDown(KeyCodes.VK_RWIN);
-    }
-
-    private void ResetWindowsToggleSuppressionIfComplete()
-    {
-        if (_suppressToggleSpaceKeyUp ||
-            _suppressToggleLeftWinKeyUp ||
-            _suppressToggleRightWinKeyUp)
-        {
-            return;
-        }
-
-        ClearWindowsToggleSuppression();
-    }
-
-    private void ClearWindowsToggleSuppression()
-    {
-        _pendingWindowsToggleRelease = false;
-        _suppressToggleSpaceKeyUp = false;
-        _suppressToggleLeftWinKeyUp = false;
-        _suppressToggleRightWinKeyUp = false;
     }
 
     private static bool IsControlDown()

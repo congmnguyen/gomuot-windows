@@ -154,7 +154,7 @@
                                        FontFamily="Consolas"
                                        Foreground="{StaticResource SecondaryTextBrush}">
                                 <Run Text="Hotkey: " FontWeight="SemiBold"/>
-                                <Run Text="Win + Space để bật hoặc tắt bộ gõ."/>
+                                <Run Text="Ctrl + Shift + Space để bật hoặc tắt bộ gõ."/>
                             </TextBlock>
                         </Border>
                     </StackPanel>
@@ -203,7 +203,7 @@
                                 <LineBreak/>
                                 <Run Text="right click: bật/tắt, about, feedback"/>
                                 <LineBreak/>
-                                <Run Text="double click hoặc Win + Space: toggle nhanh"/>
+                                <Run Text="double click hoặc Ctrl + Shift + Space: toggle nhanh"/>
                             </TextBlock>
                         </Border>
 
@@ -218,7 +218,7 @@
                                        FontFamily="Consolas"
                                        Foreground="{StaticResource SecondaryTextBrush}">
                                 <Run Text="Mẹo: " FontWeight="SemiBold"/>
-                                <Run Text="nếu bạn quen đổi input bằng Windows, cứ giữ Win + Space."/>
+                                <Run Text="Win + Space vẫn để Windows tự xử lý đổi input source."/>
                             </TextBlock>
                         </Border>
                     </StackPanel>

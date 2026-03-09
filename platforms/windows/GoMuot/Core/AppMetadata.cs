@@ -39,6 +39,7 @@ public static class AppMetadata
 
     // Tech
     public static readonly string TechStack = "Rust + WPF";
+    public static readonly string ToggleHotkeyDisplay = "Ctrl+Shift+Space";
 }
 
 /// <summary>
