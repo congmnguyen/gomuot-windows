@@ -12,9 +12,7 @@ public class KeyboardHook : IDisposable
 
     private const int WH_KEYBOARD_LL = 13;
     private const int WM_KEYDOWN = 0x0100;
-    private const int WM_KEYUP = 0x0101;
     private const int WM_SYSKEYDOWN = 0x0104;
-    private const int WM_SYSKEYUP = 0x0105;
     private const uint LLKHF_INJECTED = 0x10;
 
     #endregion
@@ -63,10 +61,6 @@ public class KeyboardHook : IDisposable
 
     // Flag to prevent recursive processing of injected keys
     private bool _isProcessing;
-
-    // Once Win+Space toggles the IME, swallow the remaining key sequence so
-    // Windows does not open Start or the language switcher on key release.
-    private bool _suppressWindowsToggleSequence;
 
     // Identifier for our injected keys (to skip processing them)
     private static readonly IntPtr InjectedKeyMarker = new IntPtr(0x474E4820); // "GNH " in hex
@@ -130,10 +124,7 @@ public class KeyboardHook : IDisposable
             return CallNextHookEx(_hookId, nCode, wParam, lParam);
         }
 
-        bool isKeyDown = wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN;
-        bool isKeyUp = wParam == (IntPtr)WM_KEYUP || wParam == (IntPtr)WM_SYSKEYUP;
-
-        if (nCode >= 0 && (isKeyDown || isKeyUp))
+        if (nCode >= 0 && (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN))
         {
             var hookStruct = Marshal.PtrToStructure<KBDLLHOOKSTRUCT>(lParam);
 
@@ -161,31 +152,6 @@ public class KeyboardHook : IDisposable
                 return CallNextHookEx(_hookId, nCode, wParam, lParam);
             }
 
-            if (_suppressWindowsToggleSequence)
-            {
-                if (keyCode == KeyCodes.VK_SPACE ||
-                    keyCode == KeyCodes.VK_LWIN ||
-                    keyCode == KeyCodes.VK_RWIN)
-                {
-                    if (isKeyUp && (keyCode == KeyCodes.VK_LWIN || keyCode == KeyCodes.VK_RWIN))
-                    {
-                        _suppressWindowsToggleSequence = false;
-                    }
-
-                    return (IntPtr)1;
-                }
-
-                if (!IsWindowsDown())
-                {
-                    _suppressWindowsToggleSequence = false;
-                }
-            }
-
-            if (!isKeyDown)
-            {
-                return CallNextHookEx(_hookId, nCode, wParam, lParam);
-            }
-
             bool shift = IsShiftDown();
             bool capsLock = IsCapsLockOn();
             bool ctrl = IsControlDown();
@@ -195,7 +161,6 @@ public class KeyboardHook : IDisposable
             if (keyCode == KeyCodes.VK_SPACE && windows && !ctrl && !alt && !shift)
             {
                 RustBridge.ClearAll();
-                _suppressWindowsToggleSequence = true;
                 ToggleRequested?.Invoke();
                 return (IntPtr)1;
             }
