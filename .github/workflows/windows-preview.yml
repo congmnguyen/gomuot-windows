@@ -1,0 +1,65 @@
+name: GoMuot Windows Preview Build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows-preview:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: core
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build Windows package
+        shell: pwsh
+        run: |
+          ./scripts/build/windows.ps1 -Clean
+
+      - name: Compute preview version
+        id: version
+        shell: bash
+        run: |
+          TS=$(date -u +%Y%m%d-%H%M%S)
+          TAG="windows-preview-${TS}"
+          TITLE="GoMuot Windows Preview ${TS}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "title=$TITLE" >> "$GITHUB_OUTPUT"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-preview-zip
+          path: platforms/windows/*.zip
+          retention-days: 14
+
+      - name: Create GitHub pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          ZIP_FILE=$(ls platforms/windows/*.zip | head -1)
+
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --title "${{ steps.version.outputs.title }}" \
+            --notes "Automated Windows preview build." \
+            --prerelease \
+            "$ZIP_FILE"

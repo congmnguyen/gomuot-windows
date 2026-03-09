@@ -1,0 +1,26 @@
+[package]
+name = "gomuot-core"
+version = "0.1.0"
+edition = "2021"
+authors = ["Cong Nguyen"]
+license = "GPL-3.0-or-later"
+description = "Gõ Mượt - Vietnamese input method core engine"
+repository = "https://github.com/congmnguyen/gomuot-windows"
+
+[lib]
+name = "gomuot_core"
+crate-type = ["staticlib", "cdylib", "rlib"]  # Add rlib for tests
+
+[dependencies]
+# No external dependencies - using std::collections::HashSet for dictionary lookup
+
+[dev-dependencies]
+rstest = "0.18"
+serial_test = "3.0"
+
+[profile.release]
+opt-level = "z"          # Optimize for size
+lto = true               # Link-time optimization
+codegen-units = 1        # Better optimization
+strip = true             # Strip symbols
+panic = "abort"          # Smaller binary

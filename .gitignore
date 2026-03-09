@@ -1,0 +1,59 @@
+# Environment
+.env
+.env.local
+
+# Rust
+target/
+Cargo.lock
+**/*.rs.bk
+
+# Node
+node_modules/
+
+# macOS
+*.xcuserstate
+xcuserdata/
+DerivedData/
+*.ipa
+*.dSYM.zip
+*.dSYM
+.DS_Store
+platforms/macos/*.a
+platforms/macos/*.dylib
+platforms/macos/build/
+*.xcworkspace/
+project.xcworkspace/
+
+# Windows
+bin/
+obj/
+*.exe
+*.dll
+*.pdb
+
+# Build artifacts
+*.o
+*.so
+*.profraw
+*.profdata
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Agent configs (not project-specific)
+.claude/*
+!.claude/skills/
+!.claude/commands/
+.claude/skills/*
+!.claude/skills/github-assistant/
+.claude/commands/*
+!.claude/commands/github.md
+.claude/.env*
+.claude/skills/.env*
+.opencode/
+plans/
+CLAUDE.md
