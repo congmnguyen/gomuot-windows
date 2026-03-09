@@ -13,7 +13,7 @@
 
 ## Hotkey
 
-- `Ctrl + Shift + Space`: bật/tắt bộ gõ
+- `Ctrl + Space`: bật/tắt bộ gõ
 - Nhấp đúp tray icon: bật/tắt bộ gõ
 
 ## Build từ source

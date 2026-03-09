@@ -4,7 +4,7 @@
 
 Current behavior:
 - single typing mode: `Simple Telex`
-- `Ctrl + Shift + Space` toggles the IME on and off
+- `Ctrl + Space` toggles the IME on and off
 - build output: `platforms/windows/publish/GoMuot.exe`
 
 Quick start on Windows:

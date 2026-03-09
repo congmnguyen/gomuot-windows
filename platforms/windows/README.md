@@ -103,7 +103,7 @@ HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Run
 ## Current UX
 
 - Single mode: `Simple Telex`
-- Hotkey toggle: `Ctrl+Shift+Space`
+- Hotkey toggle: `Ctrl+Space`
 - Tray toggle: right click or double click the tray icon
 
 ## License
