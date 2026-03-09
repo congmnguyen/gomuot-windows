@@ -151,6 +151,16 @@ public class KeyboardHook : IDisposable
 
             ushort keyCode = (ushort)hookStruct.vkCode;
 
+            // Never run IME transformations while one of GoMuot's own windows
+            // has focus. Otherwise injected replacements are sent back into the
+            // app UI itself and can trigger buttons, links, or menu behavior.
+            var foreground = ForegroundWindowInfo.Capture();
+            if (foreground.IsCurrentProcess)
+            {
+                RustBridge.ClearAll();
+                return CallNextHookEx(_hookId, nCode, wParam, lParam);
+            }
+
             if (_suppressWindowsToggleSequence)
             {
                 if (keyCode == KeyCodes.VK_SPACE ||

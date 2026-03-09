@@ -4,7 +4,7 @@ using System.Text;
 
 namespace GoMuot.Core;
 
-internal readonly record struct ForegroundWindowInfo(string ProcessName, string WindowTitle)
+internal readonly record struct ForegroundWindowInfo(uint ProcessId, string ProcessName, string WindowTitle)
 {
     public bool IsKnownTerminalHost =>
         ProcessName is "windowsterminal" or
@@ -26,6 +26,9 @@ internal readonly record struct ForegroundWindowInfo(string ProcessName, string 
     public bool MentionsClaudeCode =>
         WindowTitle.Contains("claude code", StringComparison.OrdinalIgnoreCase) ||
         WindowTitle.Contains("claude", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsCurrentProcess =>
+        ProcessId != 0 && ProcessId == (uint)Environment.ProcessId;
 
     public static ForegroundWindowInfo Capture()
     {
@@ -56,6 +59,7 @@ internal readonly record struct ForegroundWindowInfo(string ProcessName, string 
         _ = GetWindowTextW(hwnd, titleBuilder, titleBuilder.Capacity);
 
         return new ForegroundWindowInfo(
+            processId,
             NormalizeProcessName(processName),
             titleBuilder.ToString());
     }
