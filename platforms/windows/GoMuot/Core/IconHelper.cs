@@ -17,9 +17,12 @@ namespace GoMuot.Core;
 /// </summary>
 public static class IconHelper
 {
+    private static readonly DrawingColor TrayEnabledBackground = DrawingColor.FromArgb(193, 95, 60);
+    private static readonly DrawingColor TrayEnabledText = DrawingColor.FromArgb(244, 243, 238);
     private static readonly DrawingColor AccentTop = DrawingColor.FromArgb(240, 160, 80);
     private static readonly DrawingColor AccentBottom = DrawingColor.FromArgb(216, 119, 6);
     private static readonly DrawingColor DisabledGray = DrawingColor.FromArgb(209, 213, 219);
+    private static readonly DrawingColor DisabledText = DrawingColor.FromArgb(75, 85, 99);
 
     [DllImport("gdi32.dll")]
     private static extern bool DeleteObject(IntPtr hObject);
@@ -43,19 +46,11 @@ public static class IconHelper
             var rect = new Rectangle(0, 0, size - 1, size - 1);
             using var path = RoundedRect(rect, 3);
 
-            if (isEnabled)
-            {
-                using var brush = new DrawingLinearGradientBrush(rect, AccentTop, AccentBottom, LinearGradientMode.Vertical);
-                g.FillPath(brush, path);
-            }
-            else
-            {
-                using var brush = new SolidBrush(DisabledGray);
-                g.FillPath(brush, path);
-            }
+            using var backgroundBrush = new SolidBrush(isEnabled ? TrayEnabledBackground : DisabledGray);
+            g.FillPath(backgroundBrush, path);
 
             using var font = new Font("Segoe UI", 9, DrawingFontStyle.Bold);
-            using var textBrush = new SolidBrush(DrawingColor.White);
+            using var textBrush = new SolidBrush(isEnabled ? TrayEnabledText : DisabledText);
             var textSize = g.MeasureString(text, font);
             g.DrawString(text, font, textBrush, (size - textSize.Width) / 2, (size - textSize.Height) / 2);
         }

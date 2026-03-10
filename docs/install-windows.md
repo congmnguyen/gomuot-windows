@@ -14,7 +14,7 @@
 ## Hotkey
 
 - `Ctrl + Space`: bật/tắt bộ gõ
-- Nhấp đúp tray icon: bật/tắt bộ gõ
+- Nhấp trái tray icon: đổi nhanh giữa `V` và `E`
 
 ## Build từ source
 
@@ -30,6 +30,17 @@ cd gomuot-windows
 powershell -ExecutionPolicy Bypass -File scripts/setup/windows.ps1
 powershell -ExecutionPolicy Bypass -File scripts/build/windows.ps1 -Clean
 ```
+
+Ký mã khi build để giảm cảnh báo SmartScreen:
+
+```powershell
+$env:GOMUOT_SIGN_PFX_PATH = "C:\certs\gomuot.pfx"
+$env:GOMUOT_SIGN_PFX_PASSWORD = "your-password"
+powershell -ExecutionPolicy Bypass -File scripts/build/windows.ps1 -Clean
+```
+
+Bạn cũng có thể dùng certificate đã cài sẵn trong Windows store bằng `GOMUOT_SIGN_CERT_THUMBPRINT`.
+Code signing giúp giảm cảnh báo, nhưng SmartScreen vẫn còn phụ thuộc vào reputation của certificate/phần mềm.
 
 Kết quả:
 - App publish: `platforms\windows\publish\`

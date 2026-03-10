@@ -14,8 +14,10 @@ public class TrayIcon : IDisposable
     private NotifyIcon? _notifyIcon;
     private ContextMenuStrip? _contextMenu;
     private ToolStripMenuItem? _headerItem;
+    private ToolStripMenuItem? _modeItem;
     private bool _isEnabled = true;
     private bool _disposed;
+    private DateTime _lastPrimaryToggleUtc = DateTime.MinValue;
 
     #region Events
 
@@ -42,11 +44,11 @@ public class TrayIcon : IDisposable
         _contextMenu.Items.Add(_headerItem);
         _contextMenu.Items.Add(new ToolStripSeparator());
 
-        var methodItem = new ToolStripMenuItem("Simple Telex")
+        _modeItem = new ToolStripMenuItem("Tiếng Việt (Simple Telex)")
         {
             Enabled = false
         };
-        _contextMenu.Items.Add(methodItem);
+        _contextMenu.Items.Add(_modeItem);
 
         _contextMenu.Items.Add(new ToolStripSeparator());
 
@@ -83,8 +85,8 @@ public class TrayIcon : IDisposable
             Visible = true
         };
 
-        // Double-click to toggle (like macOS)
-        _notifyIcon.DoubleClick += (s, e) => ToggleEnabled();
+        // Single left click toggles between Vietnamese and English.
+        _notifyIcon.MouseClick += OnNotifyIconMouseClick;
 
         // Update initial state
         UpdateState(isEnabled);
@@ -100,8 +102,13 @@ public class TrayIcon : IDisposable
         // Update header text
         if (_headerItem != null)
         {
-            string status = isEnabled ? "ON" : "OFF";
+            string status = isEnabled ? "V" : "E";
             _headerItem.Text = $"{AppMetadata.Name}  [{status}]";
+        }
+
+        if (_modeItem != null)
+        {
+            _modeItem.Text = isEnabled ? "Tiếng Việt (Simple Telex)" : "English";
         }
 
         UpdateIcon(isEnabled);
@@ -113,6 +120,23 @@ public class TrayIcon : IDisposable
         _isEnabled = !_isEnabled;
         UpdateState(_isEnabled);
         OnEnabledChanged?.Invoke(_isEnabled);
+    }
+
+    private void OnNotifyIconMouseClick(object? sender, MouseEventArgs e)
+    {
+        if (e.Button != MouseButtons.Left)
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        if ((now - _lastPrimaryToggleUtc).TotalMilliseconds < SystemInformation.DoubleClickTime)
+        {
+            return;
+        }
+
+        _lastPrimaryToggleUtc = now;
+        ToggleEnabled();
     }
 
     private void UpdateIcon(bool isEnabled)
@@ -133,9 +157,9 @@ public class TrayIcon : IDisposable
     {
         if (_notifyIcon == null) return;
 
-        string status = isEnabled ? "Bật" : "Tắt";
-        string methodName = InputMethodInfo.GetName(InputMethod.Telex);
-        _notifyIcon.Text = $"{AppMetadata.Name} [{methodName}] - {status}";
+        string mode = isEnabled ? "V" : "E";
+        string methodName = isEnabled ? InputMethodInfo.GetName(InputMethod.Telex) : "English";
+        _notifyIcon.Text = $"{AppMetadata.Name} [{mode}] - {methodName}";
     }
 
     private void ShowAbout()

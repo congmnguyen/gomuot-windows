@@ -45,6 +45,31 @@ platforms\windows\publish\
 platforms\windows\GoMuot-<version>-win-x64.zip
 ```
 
+### 5. Optional Code Signing
+
+The Windows build script can sign published artifacts with Authenticode before zipping them.
+
+Use a PFX file:
+
+```powershell
+$env:GOMUOT_SIGN_PFX_PATH = "C:\certs\gomuot.pfx"
+$env:GOMUOT_SIGN_PFX_PASSWORD = "your-password"
+powershell -ExecutionPolicy Bypass -File scripts/build/windows.ps1 -Clean
+```
+
+Or use a certificate already installed in the Windows certificate store:
+
+```powershell
+$env:GOMUOT_SIGN_CERT_THUMBPRINT = "YOUR_CERT_THUMBPRINT"
+powershell -ExecutionPolicy Bypass -File scripts/build/windows.ps1 -Clean
+```
+
+Optional environment variables:
+- `GOMUOT_SIGNTOOL_PATH`: explicit path to `signtool.exe`
+- `GOMUOT_SIGN_TIMESTAMP_URL`: RFC 3161 timestamp URL (default: `http://timestamp.digicert.com`)
+
+Signing helps reduce SmartScreen warnings, but Windows reputation still depends on the certificate and download history.
+
 If you only want the IDE build, open `platforms/windows/GoMuot/GoMuot.csproj` in Visual Studio.
 
 Runtime test checklist:
@@ -104,7 +129,7 @@ HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Run
 
 - Single mode: `Simple Telex`
 - Hotkey toggle: `Ctrl+Space`
-- Tray toggle: right click or double click the tray icon
+- Tray toggle: left click the tray icon to switch `V/E`, right click to open the menu
 
 ## License
 
