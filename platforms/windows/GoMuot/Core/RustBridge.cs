@@ -10,6 +10,7 @@ namespace GoMuot.Core;
 public static class RustBridge
 {
     private const string DllName = "gomuot_core.dll";
+    private static readonly object SyncRoot = new();
 
     #region Native Imports
 
@@ -51,14 +52,23 @@ public static class RustBridge
     /// <summary>
     /// Initialize the IME engine. Call once at startup.
     /// </summary>
-    public static void Initialize() => ime_init();
+    public static void Initialize()
+    {
+        lock (SyncRoot)
+        {
+            ime_init();
+        }
+    }
 
     /// <summary>
     /// Clear the typing buffer.
     /// </summary>
     public static void Clear()
     {
-        ime_clear();
+        lock (SyncRoot)
+        {
+            ime_clear();
+        }
     }
 
     /// <summary>
@@ -66,48 +76,78 @@ public static class RustBridge
     /// </summary>
     public static void ClearAll()
     {
-        ime_clear_all();
+        lock (SyncRoot)
+        {
+            ime_clear_all();
+        }
     }
 
     /// <summary>
     /// Set input method (Telex=0, VNI=1)
     /// </summary>
-    public static void SetMethod(InputMethod method) => ime_method((byte)method);
+    public static void SetMethod(InputMethod method)
+    {
+        lock (SyncRoot)
+        {
+            ime_method((byte)method);
+        }
+    }
 
     /// <summary>
     /// Enable or disable IME processing
     /// </summary>
-    public static void SetEnabled(bool enabled) => ime_enabled(enabled);
+    public static void SetEnabled(bool enabled)
+    {
+        lock (SyncRoot)
+        {
+            ime_enabled(enabled);
+        }
+    }
 
     /// <summary>
     /// Set tone style (modern=true: hòa, old=false: hoà)
     /// </summary>
-    public static void SetModernTone(bool modern) => ime_modern(modern);
+    public static void SetModernTone(bool modern)
+    {
+        lock (SyncRoot)
+        {
+            ime_modern(modern);
+        }
+    }
 
     /// <summary>
     /// Use Simple Telex behavior: keep standalone "w" as-is while preserving ow/uw.
     /// </summary>
-    public static void SetSkipWShortcut(bool skip) => ime_skip_w_shortcut(skip);
+    public static void SetSkipWShortcut(bool skip)
+    {
+        lock (SyncRoot)
+        {
+            ime_skip_w_shortcut(skip);
+        }
+    }
 
     /// <summary>
     /// Process a keystroke and get the result
     /// </summary>
     public static ImeResult ProcessKey(ushort keycode, bool capslock, bool ctrl, bool shift)
     {
-        IntPtr ptr = ime_key_ext(keycode, capslock, ctrl, shift);
-        if (ptr == IntPtr.Zero)
+        lock (SyncRoot)
         {
-            return ImeResult.Empty;
-        }
+            IntPtr ptr = ime_key_ext(keycode, capslock, ctrl, shift);
+            if (ptr == IntPtr.Zero)
+            {
+                return ImeResult.Empty;
+            }
 
-        try
-        {
-            var native = Marshal.PtrToStructure<NativeResult>(ptr);
-            return ImeResult.FromNative(native);
-        }
-        finally
-        {
-            ime_free(ptr);
+            try
+            {
+                var native = Marshal.PtrToStructure<NativeResult>(ptr);
+                return ImeResult.FromNative(native);
+            }
+            finally
+            {
+                ime_free(ptr);
+            }
         }
     }
 

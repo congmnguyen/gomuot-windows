@@ -1,6 +1,7 @@
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
+using System.Windows.Forms;
 
 namespace GoMuot.Core;
 
@@ -10,7 +11,31 @@ namespace GoMuot.Core;
 /// </summary>
 public static class TextSender
 {
-    private readonly record struct DispatchProfile(bool Sequential, int RetryCount, int KeyDelayMs, int PhaseDelayMs);
+    private enum ReplacementMethod
+    {
+        Backspace,
+        EmptyCharPrefix,
+        ClipboardPaste
+    }
+
+    private enum DispatchMode
+    {
+        Batched,
+        PairSequential,
+        EventSequential
+    }
+
+    private readonly record struct DispatchProfile(
+        ReplacementMethod Method,
+        DispatchMode DispatchMode,
+        int RetryCount,
+        int KeyDelayMs,
+        int PhaseDelayMs,
+        int ClipboardRestoreDelayMs);
+
+    private const string EmptyCharPrefix = "\u202F";
+    private const int ClipboardRetryCount = 5;
+    private const int ClipboardRetryDelayMs = 10;
 
     #region Win32 Constants
 
@@ -98,9 +123,24 @@ public static class TextSender
         var marker = KeyboardHook.GetInjectedKeyMarker();
         var profile = ResolveDispatchProfile();
 
+        if (profile.Method == ReplacementMethod.ClipboardPaste &&
+            TrySendTextWithClipboard(text, backspaces, trailingText, trailingVirtualKey, profile, marker))
+        {
+            return;
+        }
+
+        var prefixInputs = new List<INPUT>();
         var backspaceInputs = new List<INPUT>();
         var textInputs = new List<INPUT>();
         var trailingInputs = new List<INPUT>();
+
+        if (profile.Method == ReplacementMethod.EmptyCharPrefix &&
+            backspaces > 0 &&
+            !string.IsNullOrEmpty(text))
+        {
+            AddUnicodeText(prefixInputs, EmptyCharPrefix, marker);
+            backspaces += 1;
+        }
 
         for (int i = 0; i < backspaces; i++)
         {
@@ -119,6 +159,13 @@ public static class TextSender
             AddVirtualKey(trailingInputs, trailingVirtualKey.Value, marker);
         }
 
+        DispatchInputGroup(prefixInputs, profile);
+
+        if (prefixInputs.Count > 0 && backspaceInputs.Count > 0 && profile.PhaseDelayMs > 0)
+        {
+            Thread.Sleep(profile.PhaseDelayMs);
+        }
+
         DispatchInputGroup(backspaceInputs, profile);
 
         if (backspaceInputs.Count > 0 && (textInputs.Count > 0 || trailingInputs.Count > 0) && profile.PhaseDelayMs > 0)
@@ -134,6 +181,85 @@ public static class TextSender
         }
 
         DispatchInputGroup(trailingInputs, profile);
+    }
+
+    private static bool TrySendTextWithClipboard(
+        string text,
+        int backspaces,
+        string? trailingText,
+        ushort? trailingVirtualKey,
+        DispatchProfile profile,
+        IntPtr marker)
+    {
+        string pasteText = text + (trailingText ?? string.Empty);
+
+        if (!TryCaptureClipboard(out IDataObject? originalClipboard))
+        {
+            return false;
+        }
+
+        bool clipboardUpdated = false;
+
+        try
+        {
+            var backspaceInputs = new List<INPUT>();
+            for (int i = 0; i < backspaces; i++)
+            {
+                AddVirtualKey(backspaceInputs, KeyCodes.VK_BACK, marker);
+            }
+
+            DispatchInputGroup(backspaceInputs, profile);
+
+            // Once backspaces are sent we must not return false — the caller
+            // would re-send backspaces and cause double-deletion.  From this
+            // point on we always return true regardless of clipboard errors.
+            bool backspacesSent = backspaceInputs.Count > 0;
+
+            if (!string.IsNullOrEmpty(pasteText))
+            {
+                if (backspacesSent && profile.PhaseDelayMs > 0)
+                {
+                    Thread.Sleep(profile.PhaseDelayMs);
+                }
+
+                if (!TrySetClipboardText(pasteText))
+                {
+                    return backspacesSent;
+                }
+
+                clipboardUpdated = true;
+
+                var pasteInputs = new List<INPUT>();
+                AddModifiedVirtualKey(pasteInputs, KeyCodes.VK_CONTROL, KeyCodes.VK_V, marker);
+                DispatchInputGroup(pasteInputs, profile);
+            }
+
+            if (trailingVirtualKey.HasValue)
+            {
+                if (!string.IsNullOrEmpty(pasteText) && profile.PhaseDelayMs > 0)
+                {
+                    Thread.Sleep(profile.PhaseDelayMs);
+                }
+
+                var trailingInputs = new List<INPUT>();
+                AddVirtualKey(trailingInputs, trailingVirtualKey.Value, marker);
+                DispatchInputGroup(trailingInputs, profile);
+            }
+
+            return true;
+        }
+        finally
+        {
+            if (clipboardUpdated)
+            {
+                if (profile.ClipboardRestoreDelayMs > 0)
+                {
+                    Thread.Sleep(profile.ClipboardRestoreDelayMs);
+                }
+
+                _ = TryRestoreClipboard(originalClipboard);
+            }
+        }
     }
 
     private static void AddUnicodeText(List<INPUT> inputs, string text, IntPtr marker)
@@ -223,33 +349,81 @@ public static class TextSender
         });
     }
 
+    private static void AddModifiedVirtualKey(List<INPUT> inputs, ushort modifierVirtualKey, ushort virtualKey, IntPtr marker)
+    {
+        AddKeyEvent(inputs, modifierVirtualKey, false, marker);
+        AddKeyEvent(inputs, virtualKey, false, marker);
+        AddKeyEvent(inputs, virtualKey, true, marker);
+        AddKeyEvent(inputs, modifierVirtualKey, true, marker);
+    }
+
+    private static void AddKeyEvent(List<INPUT> inputs, ushort virtualKey, bool keyUp, IntPtr marker)
+    {
+        inputs.Add(new INPUT
+        {
+            type = INPUT_KEYBOARD,
+            u = new INPUTUNION
+            {
+                ki = new KEYBDINPUT
+                {
+                    wVk = virtualKey,
+                    wScan = 0,
+                    dwFlags = keyUp ? KEYEVENTF_KEYUP : 0,
+                    time = 0,
+                    dwExtraInfo = marker
+                }
+            }
+        });
+    }
+
     private static DispatchProfile ResolveDispatchProfile()
     {
         var foreground = ForegroundWindowInfo.Capture();
 
-        if (foreground.IsKnownTerminalHost)
+        if (foreground.IsKnownChromiumHost)
         {
-            return new DispatchProfile(
-                Sequential: true,
-                RetryCount: 5,
-                KeyDelayMs: 2,
-                PhaseDelayMs: 6);
+            FocusedElementInfo focusedElement = FocusedElementInfo.Capture(foreground.ProcessId);
+            if (foreground.IsLikelyChromiumBrowserChromeUi || focusedElement.IsBrowserAutocompleteField)
+            {
+                return new DispatchProfile(
+                    Method: ReplacementMethod.EmptyCharPrefix,
+                    DispatchMode: DispatchMode.PairSequential,
+                    RetryCount: 4,
+                    KeyDelayMs: 2,
+                    PhaseDelayMs: 8,
+                    ClipboardRestoreDelayMs: 0);
+            }
         }
 
-        if (foreground.IsKnownEditorHost && foreground.MentionsClaudeCode)
+        if (foreground.IsWindowsTerminal)
         {
             return new DispatchProfile(
-                Sequential: true,
-                RetryCount: 4,
+                Method: ReplacementMethod.ClipboardPaste,
+                DispatchMode: DispatchMode.EventSequential,
+                RetryCount: 6,
+                KeyDelayMs: 12,
+                PhaseDelayMs: 30,
+                ClipboardRestoreDelayMs: 120);
+        }
+
+        if (foreground.IsKnownTerminalHost || foreground.IsKnownEditorHost)
+        {
+            return new DispatchProfile(
+                Method: ReplacementMethod.Backspace,
+                DispatchMode: DispatchMode.PairSequential,
+                RetryCount: 5,
                 KeyDelayMs: 2,
-                PhaseDelayMs: 4);
+                PhaseDelayMs: 6,
+                ClipboardRestoreDelayMs: 0);
         }
 
         return new DispatchProfile(
-            Sequential: false,
+            Method: ReplacementMethod.Backspace,
+            DispatchMode: DispatchMode.Batched,
             RetryCount: 3,
             KeyDelayMs: 0,
-            PhaseDelayMs: 0);
+            PhaseDelayMs: 0,
+            ClipboardRestoreDelayMs: 0);
     }
 
     private static void DispatchInputGroup(List<INPUT> inputs, DispatchProfile profile)
@@ -259,9 +433,24 @@ public static class TextSender
             return;
         }
 
-        if (!profile.Sequential)
+        if (profile.DispatchMode == DispatchMode.Batched)
         {
             SendAllWithRetry(inputs.ToArray(), profile.RetryCount);
+            return;
+        }
+
+        if (profile.DispatchMode == DispatchMode.EventSequential)
+        {
+            for (int i = 0; i < inputs.Count; i++)
+            {
+                SendAllWithRetry(new[] { inputs[i] }, profile.RetryCount);
+
+                if (profile.KeyDelayMs > 0 && i + 1 < inputs.Count)
+                {
+                    Thread.Sleep(profile.KeyDelayMs);
+                }
+            }
+
             return;
         }
 
@@ -320,5 +509,83 @@ public static class TextSender
                 Thread.Sleep(2);
             }
         }
+    }
+
+    private static bool TryCaptureClipboard(out IDataObject? dataObject)
+    {
+        for (int attempt = 0; attempt <= ClipboardRetryCount; attempt++)
+        {
+            try
+            {
+                dataObject = Clipboard.GetDataObject();
+                return true;
+            }
+            catch (ExternalException)
+            {
+                if (attempt == ClipboardRetryCount)
+                {
+                    break;
+                }
+
+                Thread.Sleep(ClipboardRetryDelayMs);
+            }
+        }
+
+        dataObject = null;
+        return false;
+    }
+
+    private static bool TrySetClipboardText(string text)
+    {
+        for (int attempt = 0; attempt <= ClipboardRetryCount; attempt++)
+        {
+            try
+            {
+                Clipboard.SetDataObject(text, true);
+                return true;
+            }
+            catch (ExternalException)
+            {
+                if (attempt == ClipboardRetryCount)
+                {
+                    break;
+                }
+
+                Thread.Sleep(ClipboardRetryDelayMs);
+            }
+        }
+
+        return false;
+    }
+
+    private static bool TryRestoreClipboard(IDataObject? dataObject)
+    {
+        for (int attempt = 0; attempt <= ClipboardRetryCount; attempt++)
+        {
+            try
+            {
+                if (dataObject is null)
+                {
+                    Clipboard.Clear();
+                }
+                else
+                {
+                    Clipboard.SetDataObject(dataObject, true);
+                }
+
+                return true;
+            }
+            catch (ExternalException)
+            {
+                if (attempt == ClipboardRetryCount)
+                {
+                    break;
+                }
+
+                Thread.Sleep(ClipboardRetryDelayMs);
+            }
+        }
+
+        return false;
     }
 }

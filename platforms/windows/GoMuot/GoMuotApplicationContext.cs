@@ -10,13 +10,28 @@ namespace GoMuot;
 internal sealed class GoMuotApplicationContext : ApplicationContext
 {
     private TrayIcon? _trayIcon;
-    private KeyboardHook? _keyboardHook;
+    private KeyboardHookHost? _keyboardHookHost;
     private readonly SettingsService _settings = new();
-    private readonly SynchronizationContext _syncContext;
     private Mutex? _mutex;
+    private System.Windows.Forms.Timer? _startupTimer;
+    private SynchronizationContext? _syncContext;
 
     public GoMuotApplicationContext()
     {
+        _startupTimer = new System.Windows.Forms.Timer
+        {
+            Interval = 1
+        };
+        _startupTimer.Tick += OnStartupTick;
+        _startupTimer.Start();
+    }
+
+    private void OnStartupTick(object? sender, EventArgs e)
+    {
+        _startupTimer?.Stop();
+        _startupTimer?.Dispose();
+        _startupTimer = null;
+
         _syncContext = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
 
         try
@@ -32,10 +47,10 @@ internal sealed class GoMuotApplicationContext : ApplicationContext
             _settings.Load();
             ApplySettings();
 
-            _keyboardHook = new KeyboardHook();
-            _keyboardHook.KeyPressed += OnKeyPressed;
-            _keyboardHook.ToggleRequested += OnToggleRequested;
-            _keyboardHook.Start();
+            _keyboardHookHost = new KeyboardHookHost();
+            _keyboardHookHost.KeyPressed += OnKeyPressed;
+            _keyboardHookHost.ToggleRequested += OnToggleRequested;
+            _keyboardHookHost.Start();
 
             _trayIcon = new TrayIcon();
             _trayIcon.OnExitRequested += ExitApplication;
@@ -120,8 +135,17 @@ internal sealed class GoMuotApplicationContext : ApplicationContext
                 }
             }
 
+            string replacementText = result.GetText();
             e.Handled = true;
-            TextSender.SendText(result.GetText(), result.Backspace, trailingText, trailingVirtualKey);
+
+            // Run SendInput after the low-level hook callback returns. Some
+            // Chromium-based surfaces appear to drop or reorder synthesized
+            // input when it is emitted inline from the hook.
+            if (!(_keyboardHookHost?.TryPost(() =>
+                    TextSender.SendText(replacementText, result.Backspace, trailingText, trailingVirtualKey)) ?? false))
+            {
+                TextSender.SendText(replacementText, result.Backspace, trailingText, trailingVirtualKey);
+            }
         }
         catch (Exception ex)
         {
@@ -151,7 +175,8 @@ internal sealed class GoMuotApplicationContext : ApplicationContext
 
     private void OnToggleRequested()
     {
-        _syncContext.Post(_ => ToggleEnabled(!_settings.IsEnabled), null);
+        SynchronizationContext syncContext = _syncContext ?? new WindowsFormsSynchronizationContext();
+        syncContext.Post(_ => ToggleEnabled(!_settings.IsEnabled), null);
     }
 
     private void ExitApplication()
@@ -161,8 +186,15 @@ internal sealed class GoMuotApplicationContext : ApplicationContext
 
     protected override void ExitThreadCore()
     {
-        _keyboardHook?.Stop();
-        _keyboardHook?.Dispose();
+        _startupTimer?.Stop();
+        _startupTimer?.Dispose();
+        if (_keyboardHookHost is not null)
+        {
+            _keyboardHookHost.KeyPressed -= OnKeyPressed;
+            _keyboardHookHost.ToggleRequested -= OnToggleRequested;
+            _keyboardHookHost.Dispose();
+            _keyboardHookHost = null;
+        }
         _trayIcon?.Dispose();
         RustBridge.Clear();
         _mutex?.Dispose();
