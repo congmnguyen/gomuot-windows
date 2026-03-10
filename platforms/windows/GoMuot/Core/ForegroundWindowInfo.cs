@@ -23,6 +23,13 @@ internal readonly record struct ForegroundWindowInfo(uint ProcessId, string Proc
             "windsurf" or
             "vscodium";
 
+    public bool IsKnownChromiumHost =>
+        ProcessName is "brave" or
+            "chrome" or
+            "msedge" or
+            "vivaldi" or
+            "opera";
+
     public bool MentionsClaudeCode =>
         WindowTitle.Contains("claude code", StringComparison.OrdinalIgnoreCase) ||
         WindowTitle.Contains("claude", StringComparison.OrdinalIgnoreCase);

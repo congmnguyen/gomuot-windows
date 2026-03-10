@@ -96,7 +96,7 @@ public static class TextSender
         }
 
         var marker = KeyboardHook.GetInjectedKeyMarker();
-        var profile = ResolveDispatchProfile();
+        var profile = ResolveDispatchProfile(backspaces);
 
         var backspaceInputs = new List<INPUT>();
         var textInputs = new List<INPUT>();
@@ -223,7 +223,7 @@ public static class TextSender
         });
     }
 
-    private static DispatchProfile ResolveDispatchProfile()
+    private static DispatchProfile ResolveDispatchProfile(int backspaces)
     {
         var foreground = ForegroundWindowInfo.Capture();
 
@@ -243,6 +243,19 @@ public static class TextSender
                 RetryCount: 4,
                 KeyDelayMs: 2,
                 PhaseDelayMs: 4);
+        }
+
+        // Chromium omnibox/search controls sometimes accept the Unicode
+        // replacement but miss a tightly batched backspace, leaving stale base
+        // characters behind (for example "dd" -> "dđ"). Use a safer split
+        // dispatch only when a replacement needs deletion first.
+        if (backspaces > 0 && foreground.IsKnownChromiumHost)
+        {
+            return new DispatchProfile(
+                Sequential: true,
+                RetryCount: 4,
+                KeyDelayMs: 2,
+                PhaseDelayMs: 8);
         }
 
         return new DispatchProfile(
