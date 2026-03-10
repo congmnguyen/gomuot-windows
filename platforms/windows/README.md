@@ -3,6 +3,8 @@
 Bản Windows preview cho bộ gõ tiếng Việt gọn nhẹ, hiện tập trung vào `Simple Telex`.
 
 > GoMuot hiện là bộ gõ tiếng Việt duy nhất trên Windows được định hướng để xử lý lỗi gõ bị mất chữ trong Claude Code.
+>
+> Bản WinForms hiện tại đo thực tế khoảng `~8 MB` RAM khi idle.
 
 ## Yêu cầu
 

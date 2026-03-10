@@ -46,6 +46,7 @@ Kết quả:
 - App publish: `platforms\windows\publish\`
 - Gói zip: `platforms\windows\GoMuot-<version>-win-x64.zip`
 - Bản publish/release là self-contained, người dùng cuối không cần cài `.NET Runtime` riêng
+- Footprint idle của bản WinForms mới hiện đo thực tế khoảng `~8 MB`
 
 ## Theo dõi
 

@@ -7,6 +7,7 @@
 Hiện tại:
 - một chế độ gõ: `Simple Telex`
 - `Ctrl + Space` để bật/tắt bộ gõ
+- footprint idle đo thực tế trên bản Windows mới: khoảng `~8 MB`
 - file build ra ở: `platforms/windows/publish/GoMuot.exe`
 
 Cách chạy nhanh trên Windows:
