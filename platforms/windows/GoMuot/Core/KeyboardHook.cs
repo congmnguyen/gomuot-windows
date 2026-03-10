@@ -161,7 +161,7 @@ public class KeyboardHook : IDisposable
             // Windows owns Win+Space for input/language switching, so use a
             // non-shell chord for GoMuot toggle to avoid stuck modifiers or
             // accidental Start/input UI activation.
-            if (keyCode == KeyCodes.VK_SPACE && ctrl && shift && !alt && !windows)
+            if (keyCode == KeyCodes.VK_SPACE && ctrl && !shift && !alt && !windows)
             {
                 RustBridge.ClearAll();
                 ToggleRequested?.Invoke();

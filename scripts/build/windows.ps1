@@ -3,7 +3,13 @@ param(
     [string]$Configuration = "Release",
     [string]$RuntimeIdentifier = "win-x64",
     [string]$RustTarget = "x86_64-pc-windows-msvc",
-    [switch]$Clean
+    [switch]$Clean,
+    [string]$SignToolPath = "",
+    [string]$SigningCertificatePath = "",
+    [string]$SigningCertificatePassword = "",
+    [string]$SigningCertificateThumbprint = "",
+    [string]$TimestampUrl = "http://timestamp.digicert.com",
+    [switch]$SkipSigning
 )
 
 $ErrorActionPreference = "Stop"
@@ -56,6 +62,115 @@ function Get-VersionInfo {
     }
 }
 
+function Get-ValueOrEnv([string]$Value, [string]$EnvName) {
+    if (-not [string]::IsNullOrWhiteSpace($Value)) {
+        return $Value
+    }
+
+    $envValue = [Environment]::GetEnvironmentVariable($EnvName)
+    if ([string]::IsNullOrWhiteSpace($envValue)) {
+        return ""
+    }
+
+    return $envValue
+}
+
+function Resolve-SignToolPath([string]$PreferredPath) {
+    $candidate = Get-ValueOrEnv $PreferredPath "GOMUOT_SIGNTOOL_PATH"
+    if (-not [string]::IsNullOrWhiteSpace($candidate)) {
+        if (-not (Test-Path $candidate)) {
+            throw "signtool.exe was not found at: $candidate"
+        }
+        return (Resolve-Path $candidate).Path
+    }
+
+    $command = Get-Command "signtool.exe" -ErrorAction SilentlyContinue
+    if ($command) {
+        return $command.Source
+    }
+
+    $kitRoots = @(
+        (Join-Path ${env:ProgramFiles(x86)} "Windows Kits\10\bin"),
+        (Join-Path $env:ProgramFiles "Windows Kits\10\bin")
+    ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-Path $_) }
+
+    foreach ($kitRoot in $kitRoots) {
+        $match = Get-ChildItem -Path $kitRoot -Filter "signtool.exe" -Recurse -ErrorAction SilentlyContinue |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+
+        if ($match) {
+            return $match.FullName
+        }
+    }
+
+    throw "signtool.exe not found. Install Windows SDK Signing Tools or pass -SignToolPath."
+}
+
+function Get-SigningConfig {
+    if ($SkipSigning) {
+        return @{
+            Enabled = $false
+            Reason = "disabled by -SkipSigning"
+        }
+    }
+
+    $certificatePath = Get-ValueOrEnv $SigningCertificatePath "GOMUOT_SIGN_PFX_PATH"
+    $certificatePassword = Get-ValueOrEnv $SigningCertificatePassword "GOMUOT_SIGN_PFX_PASSWORD"
+    $certificateThumbprint = Get-ValueOrEnv $SigningCertificateThumbprint "GOMUOT_SIGN_CERT_THUMBPRINT"
+    $timestamp = Get-ValueOrEnv $TimestampUrl "GOMUOT_SIGN_TIMESTAMP_URL"
+
+    if ([string]::IsNullOrWhiteSpace($certificatePath) -and [string]::IsNullOrWhiteSpace($certificateThumbprint)) {
+        return @{
+            Enabled = $false
+            Reason = "no signing certificate configured"
+        }
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($certificatePath) -and -not (Test-Path $certificatePath)) {
+        throw "Signing certificate was not found at: $certificatePath"
+    }
+
+    return @{
+        Enabled = $true
+        SignToolPath = Resolve-SignToolPath $SignToolPath
+        CertificatePath = $certificatePath
+        CertificatePassword = $certificatePassword
+        CertificateThumbprint = $certificateThumbprint
+        TimestampUrl = $timestamp
+    }
+}
+
+function Invoke-SignFile([hashtable]$SigningConfig, [string]$FilePath) {
+    if (-not (Test-Path $FilePath)) {
+        return
+    }
+
+    $arguments = @("sign", "/fd", "sha256")
+
+    if (-not [string]::IsNullOrWhiteSpace($SigningConfig.TimestampUrl)) {
+        $arguments += @("/tr", $SigningConfig.TimestampUrl, "/td", "sha256")
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($SigningConfig.CertificatePath)) {
+        $arguments += @("/f", $SigningConfig.CertificatePath)
+        if (-not [string]::IsNullOrWhiteSpace($SigningConfig.CertificatePassword)) {
+            $arguments += @("/p", $SigningConfig.CertificatePassword)
+        }
+    } else {
+        $arguments += @("/sha1", $SigningConfig.CertificateThumbprint)
+    }
+
+    $arguments += $FilePath
+
+    Write-Host "  Signing: $FilePath"
+    & $SigningConfig.SignToolPath @arguments
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "signtool.exe failed for $FilePath with exit code $LASTEXITCODE"
+    }
+}
+
 Write-Host "Building GoMuot for Windows" -ForegroundColor Cyan
 Write-Host "Project: $ProjectRoot"
 
@@ -63,6 +178,7 @@ Require-Command "cargo" "Install Rust from https://rustup.rs"
 Require-Command "dotnet" "Install .NET 8 SDK from https://dotnet.microsoft.com/download"
 
 $versionInfo = Get-VersionInfo
+$signingConfig = Get-SigningConfig
 $zipName = "GoMuot-$($versionInfo.Version)-$RuntimeIdentifier.zip"
 $zipPath = Join-Path $WindowsDir $zipName
 
@@ -77,7 +193,7 @@ if ($Clean) {
 }
 
 Write-Host ""
-Write-Host "[1/3] Building Rust core..." -ForegroundColor Yellow
+Write-Host "[1/4] Building Rust core..." -ForegroundColor Yellow
 Push-Location $CoreDir
 try {
     if ($Configuration -ieq "Release") {
@@ -101,7 +217,7 @@ Copy-Item $DllPath (Join-Path $NativeDir "gomuot_core.dll") -Force
 Write-Host "  DLL: $DllPath"
 
 Write-Host ""
-Write-Host "[2/3] Publishing WPF app..." -ForegroundColor Yellow
+Write-Host "[2/4] Publishing WPF app..." -ForegroundColor Yellow
 Remove-Item -Recurse -Force $PublishDir -ErrorAction SilentlyContinue
 Push-Location $AppDir
 try {
@@ -124,7 +240,23 @@ try {
 Write-Host "  Publish: $PublishDir"
 
 Write-Host ""
-Write-Host "[3/3] Packaging zip..." -ForegroundColor Yellow
+Write-Host "[3/4] Code signing..." -ForegroundColor Yellow
+if ($signingConfig.Enabled) {
+    $filesToSign = @(
+        (Join-Path $PublishDir "GoMuot.exe"),
+        (Join-Path $PublishDir "GoMuot.dll"),
+        (Join-Path $PublishDir "gomuot_core.dll")
+    )
+
+    foreach ($file in $filesToSign) {
+        Invoke-SignFile $signingConfig $file
+    }
+} else {
+    Write-Host "  Skipped ($($signingConfig.Reason))." -ForegroundColor DarkYellow
+}
+
+Write-Host ""
+Write-Host "[4/4] Packaging zip..." -ForegroundColor Yellow
 if (Test-Path $zipPath) {
     Remove-Item -Force $zipPath
 }
@@ -135,3 +267,6 @@ Write-Host ""
 Write-Host "Build complete." -ForegroundColor Green
 Write-Host "Publish directory: $PublishDir"
 Write-Host "Zip package: $zipPath"
+if ($signingConfig.Enabled) {
+    Write-Host "Artifacts signed with Authenticode." -ForegroundColor Green
+}

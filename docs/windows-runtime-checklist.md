@@ -23,7 +23,7 @@ Mục tiêu:
 - [ ] App mở được, không crash lúc startup
 - [ ] Tray icon hiển thị đúng
 - [ ] Bật/tắt từ tray hoạt động
-- [ ] `Ctrl+Shift+Space` bật/tắt hoạt động
+- [ ] `Ctrl+Space` bật/tắt hoạt động
 - [ ] Tắt bộ gõ thì chữ gõ ra giữ nguyên ASCII
 
 ## Notepad
@@ -98,7 +98,7 @@ Mục tiêu:
 
 - [ ] `Ctrl+A`, `Ctrl+C`, `Ctrl+V`, `Ctrl+X` hoạt động bình thường
 - [ ] `Alt+Tab` hoạt động bình thường
-- [ ] `Ctrl+Shift+Space` bật/tắt bộ gõ đúng như mong muốn
+- [ ] `Ctrl+Space` bật/tắt bộ gõ đúng như mong muốn
 - [ ] `Win+V` và `Win+Shift+S` không bị hook sai
 - [ ] Nếu dùng AltGr/layout quốc tế, ký tự AltGr không bị chặn nhầm
 

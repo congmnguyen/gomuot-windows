@@ -1,13 +1,15 @@
 # GoMuot Windows
 
-`GoMuot` is a clean Windows-focused repo for a Vietnamese input method built with a Rust core and a WPF tray app.
+`GoMuot` là repo bộ gõ tiếng Việt tập trung cho Windows, dùng core Rust và app tray viết bằng WPF.
 
-Current behavior:
-- single typing mode: `Simple Telex`
-- `Ctrl + Shift + Space` toggles the IME on and off
-- build output: `platforms/windows/publish/GoMuot.exe`
+> GoMuot là bộ gõ tiếng Việt duy nhất trên Windows có thể xử lý lỗi gõ bị mất chữ trong Claude Code.
 
-Quick start on Windows:
+Hiện tại:
+- một chế độ gõ: `Simple Telex`
+- `Ctrl + Space` để bật/tắt bộ gõ
+- file build ra ở: `platforms/windows/publish/GoMuot.exe`
+
+Cách chạy nhanh trên Windows:
 
 ```powershell
 git clone https://github.com/congmnguyen/gomuot-windows.git
@@ -17,6 +19,6 @@ powershell -ExecutionPolicy Bypass -File scripts/build/windows.ps1 -Clean
 .\platforms\windows\publish\GoMuot.exe
 ```
 
-Useful docs:
+Tài liệu hữu ích:
 - `docs/install-windows.md`
 - `docs/windows-runtime-checklist.md`
