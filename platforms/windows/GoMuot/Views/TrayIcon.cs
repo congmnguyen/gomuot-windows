@@ -164,7 +164,7 @@ public class TrayIcon : IDisposable
 
     private void ShowAbout()
     {
-        var about = new AboutWindow();
+        using var about = new AboutForm();
         about.ShowDialog();
     }
 

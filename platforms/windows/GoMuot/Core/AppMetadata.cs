@@ -38,7 +38,7 @@ public static class AppMetadata
     public static readonly string License = "GPL-3.0-or-later";
 
     // Tech
-    public static readonly string TechStack = "Rust + WPF";
+    public static readonly string TechStack = "Rust + WinForms";
     public static readonly string ToggleHotkeyDisplay = "Ctrl+Space";
 }
 

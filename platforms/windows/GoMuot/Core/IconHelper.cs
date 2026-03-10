@@ -1,19 +1,14 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
-using System.Windows;
-using System.Windows.Interop;
-
 using DrawingColor = System.Drawing.Color;
 using DrawingFontStyle = System.Drawing.FontStyle;
 using DrawingLinearGradientBrush = System.Drawing.Drawing2D.LinearGradientBrush;
-using WpfImageSource = System.Windows.Media.ImageSource;
-using WpfBitmapSizeOptions = System.Windows.Media.Imaging.BitmapSizeOptions;
 
 namespace GoMuot.Core;
 
 /// <summary>
-/// Generates runtime icons for the tray and WPF windows.
+/// Generates runtime icons for the tray and WinForms windows.
 /// </summary>
 public static class IconHelper
 {
@@ -23,9 +18,6 @@ public static class IconHelper
     private static readonly DrawingColor AccentBottom = DrawingColor.FromArgb(216, 119, 6);
     private static readonly DrawingColor DisabledGray = DrawingColor.FromArgb(209, 213, 219);
     private static readonly DrawingColor DisabledText = DrawingColor.FromArgb(75, 85, 99);
-
-    [DllImport("gdi32.dll")]
-    private static extern bool DeleteObject(IntPtr hObject);
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool DestroyIcon(IntPtr hIcon);
@@ -68,9 +60,9 @@ public static class IconHelper
     }
 
     /// <summary>
-    /// Creates a WPF window icon for title bars and taskbar previews.
+    /// Creates a WinForms window icon for title bars and taskbar previews.
     /// </summary>
-    public static WpfImageSource CreateWindowIcon(int size = 32)
+    public static Icon CreateWindowIcon(int size = 32)
     {
         using var bitmap = new Bitmap(size, size);
         using (var g = Graphics.FromImage(bitmap))
@@ -91,21 +83,15 @@ public static class IconHelper
             g.DrawString("G", font, textBrush, (size - textSize.Width) / 2, (size - textSize.Height) / 2);
         }
 
-        var hBitmap = bitmap.GetHbitmap();
+        var hIcon = bitmap.GetHicon();
         try
         {
-            var source = Imaging.CreateBitmapSourceFromHBitmap(
-                hBitmap,
-                IntPtr.Zero,
-                Int32Rect.Empty,
-                WpfBitmapSizeOptions.FromEmptyOptions());
-
-            source.Freeze();
-            return source;
+            using var tempIcon = Icon.FromHandle(hIcon);
+            return (Icon)tempIcon.Clone();
         }
         finally
         {
-            DeleteObject(hBitmap);
+            DestroyIcon(hIcon);
         }
     }
 

@@ -6,10 +6,14 @@ Bản Windows preview cho bộ gõ tiếng Việt gọn nhẹ, hiện tập trun
 
 ## Yêu cầu
 
+Để chạy bản release:
 - Windows 10/11 (64-bit)
-- .NET 8.0 Runtime
+- Không cần cài .NET Runtime riêng
+
+Để build từ source:
 - Visual Studio 2022 (để build)
 - Rust toolchain với target MSVC
+- .NET 8.0 SDK
 
 ## Thiết lập môi trường
 
@@ -22,7 +26,7 @@ Bản Windows preview cho bộ gõ tiếng Việt gọn nhẹ, hiện tập trun
 # Thêm target Windows
 rustup target add x86_64-pc-windows-msvc
 
-# Cài .NET 8.0 SDK
+# Cài .NET 8.0 SDK (chỉ cần khi build từ source)
 # Tải từ https://dotnet.microsoft.com/download/dotnet/8.0
 ```
 
@@ -38,14 +42,16 @@ powershell -ExecutionPolicy Bypass -File scripts/setup/windows.ps1
 powershell -ExecutionPolicy Bypass -File scripts/build/windows.ps1
 ```
 
-### 4. Build app WPF
+### 4. Build app WinForms
 
-Script build sẽ publish app WPF và đóng gói file zip:
+Script build sẽ publish app WinForms self-contained và đóng gói file zip:
 
 ```powershell
 platforms\windows\publish\
 platforms\windows\GoMuot-<version>-win-x64.zip
 ```
+
+Người dùng chạy bản trong `publish\` hoặc file zip không cần cài thêm `.NET Runtime`.
 
 ### 5. Code signing tùy chọn
 
@@ -82,8 +88,9 @@ Checklist test runtime:
 ```text
 platforms/windows/
 ├── GoMuot/
-│   ├── GoMuot.csproj      # File project WPF
-│   ├── App.xaml            # Điểm vào ứng dụng
+│   ├── GoMuot.csproj      # File project WinForms
+│   ├── Program.cs         # Điểm vào ứng dụng
+│   ├── GoMuotApplicationContext.cs
 │   ├── Core/
 │   │   ├── RustBridge.cs   # Cầu nối P/Invoke FFI sang Rust
 │   │   ├── KeyboardHook.cs # Low-level keyboard hook
@@ -91,8 +98,8 @@ platforms/windows/
 │   │   └── TextSender.cs   # Wrapper cho API SendInput
 │   ├── Views/
 │   │   ├── TrayIcon.cs     # Icon system tray
-│   │   ├── OnboardingWindow# Màn hình hướng dẫn lần đầu
-│   │   └── AboutWindow     # Hộp thoại giới thiệu
+│   │   ├── OnboardingForm.cs # Màn hình hướng dẫn lần đầu
+│   │   └── AboutForm.cs      # Hộp thoại giới thiệu
 │   ├── Services/
 │   │   └── SettingsService # Lưu settings bằng Registry
 │   ├── Native/

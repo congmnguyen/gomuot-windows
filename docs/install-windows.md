@@ -45,6 +45,7 @@ Code signing giúp giảm cảnh báo, nhưng SmartScreen vẫn còn phụ thu�
 Kết quả:
 - App publish: `platforms\windows\publish\`
 - Gói zip: `platforms\windows\GoMuot-<version>-win-x64.zip`
+- Bản publish/release là self-contained, người dùng cuối không cần cài `.NET Runtime` riêng
 
 ## Theo dõi
 

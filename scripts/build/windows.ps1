@@ -217,14 +217,14 @@ Copy-Item $DllPath (Join-Path $NativeDir "gomuot_core.dll") -Force
 Write-Host "  DLL: $DllPath"
 
 Write-Host ""
-Write-Host "[2/4] Publishing WPF app..." -ForegroundColor Yellow
+Write-Host "[2/4] Publishing WinForms app..." -ForegroundColor Yellow
 Remove-Item -Recurse -Force $PublishDir -ErrorAction SilentlyContinue
 Push-Location $AppDir
 try {
     dotnet publish `
         -c $Configuration `
         -r $RuntimeIdentifier `
-        --self-contained false `
+        --self-contained true `
         -p:Version=$($versionInfo.Version) `
         -p:FileVersion=$($versionInfo.Version) `
         -p:AssemblyVersion=$($versionInfo.AssemblyVersion) `

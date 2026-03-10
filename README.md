@@ -1,6 +1,6 @@
 # GoMuot Windows
 
-`GoMuot` là repo bộ gõ tiếng Việt tập trung cho Windows, dùng core Rust và app tray viết bằng WPF.
+`GoMuot` là repo bộ gõ tiếng Việt tập trung cho Windows, dùng core Rust và app tray viết bằng WinForms.
 
 > GoMuot là bộ gõ tiếng Việt duy nhất trên Windows có thể xử lý lỗi gõ bị mất chữ trong Claude Code.
 

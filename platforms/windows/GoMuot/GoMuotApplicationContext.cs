@@ -1,31 +1,29 @@
-using System.Windows;
+using System;
+using System.Threading;
+using System.Windows.Forms;
 using GoMuot.Core;
 using GoMuot.Services;
 using GoMuot.Views;
 
 namespace GoMuot;
 
-/// <summary>
-/// GoMuot - Vietnamese Input Method for Windows
-/// Main application entry point
-/// Matches macOS App.swift flow
-/// </summary>
-public partial class App : System.Windows.Application
+internal sealed class GoMuotApplicationContext : ApplicationContext
 {
     private TrayIcon? _trayIcon;
     private KeyboardHook? _keyboardHook;
     private readonly SettingsService _settings = new();
-    private System.Threading.Mutex? _mutex;
+    private readonly SynchronizationContext _syncContext;
+    private Mutex? _mutex;
 
-    protected override void OnStartup(StartupEventArgs e)
+    public GoMuotApplicationContext()
     {
+        _syncContext = SynchronizationContext.Current ?? new WindowsFormsSynchronizationContext();
+
         try
         {
-            base.OnStartup(e);
-
             if (!EnsureSingleInstance())
             {
-                Shutdown();
+                ExitThread();
                 return;
             }
 
@@ -51,27 +49,28 @@ public partial class App : System.Windows.Application
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(
+            MessageBox.Show(
                 $"GoMuot khởi động lỗi.\n\n{ex.Message}",
                 AppMetadata.Name,
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
-            Shutdown();
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+            ExitThread();
         }
     }
 
     private bool EnsureSingleInstance()
     {
-        _mutex = new System.Threading.Mutex(true, "GoMuot_SingleInstance", out bool createdNew);
+        _mutex = new Mutex(true, "GoMuot_SingleInstance", out bool createdNew);
         if (!createdNew)
         {
-            System.Windows.MessageBox.Show(
+            MessageBox.Show(
                 $"{AppMetadata.Name} đang chạy.\nKiểm tra khay hệ thống (system tray).",
                 AppMetadata.Name,
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
             return false;
         }
+
         return true;
     }
 
@@ -86,7 +85,11 @@ public partial class App : System.Windows.Application
 
     private void OnKeyPressed(object? sender, KeyPressedEventArgs e)
     {
-        if (!_settings.IsEnabled) return;
+        if (!_settings.IsEnabled)
+        {
+            return;
+        }
+
         try
         {
             if (!KeyCodes.TryMapToEngineKey(e.VirtualKeyCode, out ushort engineKeyCode))
@@ -128,10 +131,9 @@ public partial class App : System.Windows.Application
 
     private void ShowOnboarding()
     {
-        var onboarding = new OnboardingWindow(_settings);
+        using var onboarding = new OnboardingForm(_settings);
         onboarding.ShowDialog();
 
-        // Save settings after onboarding
         _settings.IsFirstRun = false;
         _settings.Save();
 
@@ -149,24 +151,21 @@ public partial class App : System.Windows.Application
 
     private void OnToggleRequested()
     {
-        Dispatcher.Invoke(() => ToggleEnabled(!_settings.IsEnabled));
+        _syncContext.Post(_ => ToggleEnabled(!_settings.IsEnabled), null);
     }
 
     private void ExitApplication()
+    {
+        ExitThread();
+    }
+
+    protected override void ExitThreadCore()
     {
         _keyboardHook?.Stop();
         _keyboardHook?.Dispose();
         _trayIcon?.Dispose();
         RustBridge.Clear();
         _mutex?.Dispose();
-        Shutdown();
-    }
-
-    protected override void OnExit(ExitEventArgs e)
-    {
-        _keyboardHook?.Dispose();
-        _trayIcon?.Dispose();
-        _mutex?.Dispose();
-        base.OnExit(e);
+        base.ExitThreadCore();
     }
 }
