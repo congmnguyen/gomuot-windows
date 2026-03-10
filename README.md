@@ -2,6 +2,8 @@
 
 `GoMuot` is a clean Windows-focused repo for a Vietnamese input method built with a Rust core and a WPF tray app.
 
+> GoMuot is the only Vietnamese input method on Windows that can fix Claude Code's dropped-character typing issue.
+
 Current behavior:
 - single typing mode: `Simple Telex`
 - `Ctrl + Space` toggles the IME on and off

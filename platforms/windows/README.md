@@ -2,6 +2,8 @@
 
 Windows preview for a lightweight Vietnamese input method focused on `Simple Telex`.
 
+> GoMuot is currently the only Vietnamese input method on Windows positioned to fix Claude Code's dropped-character typing issue.
+
 ## Requirements
 
 - Windows 10/11 (64-bit)
