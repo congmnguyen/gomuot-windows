@@ -227,6 +227,17 @@ public static class TextSender
     {
         var foreground = ForegroundWindowInfo.Capture();
 
+        // Claude Code requires significantly higher delays to prevent dropped/reordered keys
+        // whether running in an editor or terminal.
+        if (foreground.MentionsClaudeCode)
+        {
+            return new DispatchProfile(
+                Sequential: true,
+                RetryCount: 5,
+                KeyDelayMs: 4,
+                PhaseDelayMs: 12);
+        }
+
         if (foreground.IsKnownTerminalHost)
         {
             return new DispatchProfile(
@@ -236,7 +247,7 @@ public static class TextSender
                 PhaseDelayMs: 6);
         }
 
-        if (foreground.IsKnownEditorHost && foreground.MentionsClaudeCode)
+        if (foreground.IsKnownEditorHost)
         {
             return new DispatchProfile(
                 Sequential: true,
